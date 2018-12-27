@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include "dictionary.h"
 
 // Here we define a custom data type based on a custom data structure: the node.
@@ -40,17 +41,19 @@ int hash(char* key)
 bool check(const char *word)
 {
     // For this function to not be case sensitive, we will convert all characters in word to lower case to jive with our exclusively lower-case dictionary.
-    char lower[strlen(word)+1];
-    for (int i = 0; i < strlen(word); i++)
+    int length = strlen(word);
+    char lower[length + 1];
+    for (int i = 0; i < length; i++)
     {
-        lower[i] = tolower(word[i]);
+         lower[i] = tolower(word[i]);
     }
-    lower[strlen(word)] = '\0';
+    lower[length] = '\0';
 
     // Now that we've neutered the CaSe SiTuAtIoN, it's time to dig into our hash table.
     // For starters, we need to determine which index of our hash function we're going to follow to a trail of linked lists.
     // Remember, a hash table is simply an array of linked lists where each element of the array is a pointer to the first node of a list.
     // One big question: which bucket will this word be in? One answer:
+
     int index = hash(lower);
 
     // Now we initialize the head, or the first node in our hash table:
@@ -63,7 +66,7 @@ bool check(const char *word)
     while (cursor != NULL)
     {
         // do something.
-        if (strcmp(word, cursor->word) == 0)
+        if (strcasecmp(word, cursor->word) == 0)
         {
             return true;
         }
@@ -73,16 +76,6 @@ bool check(const char *word)
     }
     return false;
 }
-
-
-// Now we have a new node with a value we scanned from the dictionary. Let's insert that into a linked list!
-// IMPORTANT! MAINTAIN LINKS IN LINKED LIST!!!
-// Reiterate: Take word from dictionary. Take that word and put it into node. Take that node and put it into linked list.
-// Next: Which word do we put into which linked list?
-// Time to use a hash function!! hash function: 1. takes a string 2. returns an index (index < # buckets) 3. deterministic (the same value needs to map to the same bucket every time)
-// Once you've made your hash function, you can hash your words.
-// hash the word: 1. new_node->word has the word from the dictionary 2. hashing new_node->word will give us the index of a bucket in the hash table 3. insert into the linked list
-// REMEMBER: A HASH TABLE IS AN ARRAY OF LINKED LISTS, AND EACH ELEMENT OF ARRAY IS A NODE * (POINTER POINTING TO THE VERY FIRST NODE IN THAT LINKED LIST)
 
 // As we will want to show the size of our loaded dictionary in the function size(), we will initialize an integer to count during load().
 int nowords = 0;
@@ -100,13 +93,13 @@ bool load(const char *dictionary)
     }
 
     // We need to set aside space for the words we are scanning from dict!
-    char word[LENGTH + 1];
+    char wordspace[LENGTH + 1];
 
     // make a new word: scan dictionary word by word
-    while (fscanf(dict, "%s", word) != EOF)
+    while (fscanf(dict, "%s", wordspace) != EOF)
     {
         // We need to make sure the last character in our extracted string is the null terminator '\0'.
-        word[strlen(word)] = '\0';
+        wordspace[strlen(wordspace)] = '\0';
 
         // Here we allocate enough memory to store our node using the malloc() function.
         // malloc() returns a pointer to the memory which stores our node char and pointer.
@@ -123,18 +116,18 @@ bool load(const char *dictionary)
 
         // To set the value for new_node, we'll use the arrow notation in order to access the word variable, and strcpy() to set word equal to a particular string.
         // make a new word: copy word into node
-        strcpy(new_node->word, word);
+        strcpy(new_node->word, wordspace);
 
         // Now how do we correctly insert into a linked list?
         // Point our new node to the pointer the head's pointing to so that..
         // ... we can THEN point the head to new_node.
-        node* head = NULL;
+        // node* head = NULL;
 
-        new_node->next = head;
-        head = new_node;
+        int index = 0;
+        index = hash(wordspace);
 
-        int index = hash(word);
-        // new_node->next = hashtable[index];
+        new_node->next = hashtable[index];
+        hashtable[index] = new_node;
 
         // hash the word:
         // new_node->word has the word from the dictionary
@@ -144,7 +137,10 @@ bool load(const char *dictionary)
         // Our word count just went up by 1!
         nowords++;
     }
-    return false;
+
+    fclose(dict);
+
+    return true;
 
 
     // Reiterate: Take word from dictionary. Take that word and put it into node. Take that node and put it into linked list.
@@ -167,6 +163,26 @@ unsigned int size(void)
 // Unloads dictionary from memory, returning true if successful else false
 bool unload(void)
 {
-    // TODO
-    return false;
+    // For each of the elements (pointers) in our hash table, we need to free the whole associated linked list.
+    for (int i = 0; i < AZSIZE; i++)
+    {
+
+    // Our "head" in this case is the index of our hash table. It is here where we will point our cursor.
+    node *cursor = hashtable[i];
+
+    while (cursor != NULL)
+    {
+        // We create a temporary node pointer, initially pointing to a cursor.
+        node *temp = cursor;
+        // We advance the cursor and then...
+        cursor = cursor->next;
+        // ... free that temporary node pointer!
+        free(temp);
+    }
+    }
+
+    // At some point in the command terminal, we need to make sure we implement valgrind so that all of the memory allocated has been freed.
+    // valgrind -v --leak-check=full text
+
+    return true;
 }
